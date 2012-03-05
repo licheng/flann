@@ -118,6 +118,11 @@ public:
         Logger::info("----------------------------------------------------\n");
     }
 
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        throw std::exception();
+    }
+
     /**
      *  Saves the index to a stream
      */

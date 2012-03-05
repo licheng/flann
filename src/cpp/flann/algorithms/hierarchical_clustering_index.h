@@ -359,6 +359,11 @@ public:
         }
     }
 
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        throw std::exception();
+    }
+
 
     flann_algorithm_t getType() const
     {

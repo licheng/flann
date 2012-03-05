@@ -88,6 +88,9 @@ void save_header(FILE* stream, const NNIndex<Distance>& index)
  */
 inline IndexHeader load_header(FILE* stream)
 {
+    if (stream == NULL)
+        throw FLANNException("Open file failed");
+
     IndexHeader header;
     int read_size = fread(&header,sizeof(header),1,stream);
 

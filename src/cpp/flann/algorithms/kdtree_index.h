@@ -92,12 +92,6 @@ public:
         trees_ = get_param(index_params_,"trees",4);
         tree_roots_ = new NodePtr[trees_];
 
-        // Create a permutable array of indices to the input vectors.
-        vind_.resize(size_);
-        for (size_t i = 0; i < size_; ++i) {
-            vind_[i] = int(i);
-        }
-
         mean_ = new DistanceType[veclen_];
         var_ = new DistanceType[veclen_];
     }
@@ -123,14 +117,24 @@ public:
      */
     void buildIndex()
     {
-        /* Construct the randomized trees. */
-        for (int i = 0; i < trees_; i++) {
-            /* Randomize the order of vectors to allow for unbiased sampling. */
-            std::random_shuffle(vind_.begin(), vind_.end());
-            tree_roots_[i] = divideTree(&vind_[0], int(size_) );
+        // Create a permutable array of indices to the input vectors.
+        vind_.resize(size_);
+        for (size_t i = 0; i < size_; ++i) {
+            vind_[i] = int(i);
         }
+        buildIndexImpl();
     }
 
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        vind_.clear();
+
+        for (size_t i = 0; i < mask.size(); ++i)
+            if (mask[i])
+                vind_.push_back(i);
+        size_ = vind_.size();
+        buildIndexImpl();
+    }
 
     flann_algorithm_t getType() const
     {
@@ -140,6 +144,7 @@ public:
 
     void saveIndex(FILE* stream)
     {
+        save_value(stream, size_);
         save_value(stream, trees_);
         for (int i=0; i<trees_; ++i) {
             save_tree(stream, tree_roots_[i]);
@@ -150,6 +155,7 @@ public:
 
     void loadIndex(FILE* stream)
     {
+        load_value(stream, size_);
         load_value(stream, trees_);
         if (tree_roots_!=NULL) {
             delete[] tree_roots_;
@@ -551,6 +557,16 @@ private:
 
 
 private:
+    void buildIndexImpl() 
+    {
+        /* Construct the randomized trees. */
+        for (int i = 0; i < trees_; i++) {
+            /* Randomize the order of vectors to allow for unbiased sampling. */
+            std::random_shuffle(vind_.begin(), vind_.end());
+            tree_roots_[i] = divideTree(&vind_[0], int(size_) );
+        }
+    }
+
 
     enum
     {

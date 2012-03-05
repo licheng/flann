@@ -71,6 +71,7 @@ public:
      * \brief Builds the index
      */
     virtual void buildIndex() = 0;
+    virtual void buildIndex(const std::vector<bool> &) = 0;
 
     /**
      * \brief Perform k-nearest neighbor search

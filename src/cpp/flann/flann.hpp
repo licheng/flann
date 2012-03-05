@@ -83,9 +83,13 @@ NNIndex<Distance>* load_saved_index(const Matrix<typename Distance::ElementType>
     if (header.data_type != flann_datatype<ElementType>::value) {
         throw FLANNException("Datatype of saved index is different than of the one to be created.");
     }
+    // We cannot make this check now, because the index and the dataset might be of different size
+    // some entries of the dataset might not be used in the index
+    /*
     if ((size_t(header.rows) != dataset.rows)||(size_t(header.cols) != dataset.cols)) {
         throw FLANNException("The index saved belongs to a different dataset");
     }
+    */
 
     IndexParams params;
     params["algorithm"] = header.index_type;
@@ -131,6 +135,12 @@ public:
     {
         if (!loaded_) {
             nnIndex_->buildIndex();
+        }
+    }
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        if (!loaded_) {
+            nnIndex_->buildIndex(mask);
         }
     }
 

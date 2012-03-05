@@ -375,6 +375,10 @@ public:
         computeClustering(root_, indices_, (int)size_, branching_,0);
     }
 
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        throw std::exception();
+    }
 
     void saveIndex(FILE* stream)
     {

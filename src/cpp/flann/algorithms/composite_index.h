@@ -143,6 +143,11 @@ public:
         kdtree_index_->buildIndex();
     }
 
+    void buildIndex(const std::vector<bool> &mask)
+    {
+        throw std::exception();
+    }
+
     /**
      * \brief Saves the index to a stream
      * \param stream The stream to save the index to

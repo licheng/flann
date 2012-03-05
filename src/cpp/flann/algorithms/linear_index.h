@@ -56,12 +56,17 @@ public:
 
     LinearIndex(const Matrix<ElementType>& inputData, const IndexParams& params = LinearIndexParams(),
                 Distance d = Distance()) :
-        dataset_(inputData), index_params_(params), distance_(d)
+        dataset_(inputData), index_params_(params), distance_(d), index_(NULL), size_(0)
     {
     }
 
     LinearIndex(const LinearIndex&);
     LinearIndex& operator=(const LinearIndex&);
+
+    virtual ~LinearIndex() {
+        if (index_ != NULL)
+            delete[] index_;
+    }
 
     flann_algorithm_t getType() const
     {
@@ -71,7 +76,9 @@ public:
 
     size_t size() const
     {
-        return dataset_.rows;
+        if (index_ == NULL)
+            return dataset_.rows;
+        return size_;
     }
 
     size_t veclen() const
@@ -90,24 +97,56 @@ public:
         /* nothing to do here for linear search */
     }
 
-    void saveIndex(FILE*)
+    void buildIndex(const std::vector<bool> &mask)
     {
-        /* nothing to do here for linear search */
+        size_t count = 0;
+        for (auto it = mask.begin(); it != mask.end(); ++it)
+            if (*it)
+                ++count;
+        if (index_ != NULL)
+            delete[] index_;
+        index_ = new size_t[count];
+        for (size_t i = 0, j = 0; i < mask.size(); ++i)
+            if (mask[i])
+                index_[j++] = i;
+        size_ = count;
     }
 
 
-    void loadIndex(FILE*)
+    void saveIndex(FILE* stream)
     {
-        /* nothing to do here for linear search */
+        save_value(stream, size_);
+        if (size_ > 0)
+            fwrite(index_, sizeof(size_t), size_, stream);
+    }
+
+
+    void loadIndex(FILE* stream)
+    {
+        load_value(stream, size_);
+        if (size_ > 0) {
+            if (index_ != NULL)
+                delete[] index_;
+            index_ = new size_t[size_];
+            if (fread(index_, sizeof(size_t), size_, stream) != size_) 
+                throw FLANNException("Cannot read from file");
+        } 
 
         index_params_["algorithm"] = getType();
     }
 
     void findNeighbors(ResultSet<DistanceType>& resultSet, const ElementType* vec, const SearchParams& /*searchParams*/)
     {
-        for (size_t i = 0; i < dataset_.rows; ++i) {
-            DistanceType dist = distance_(dataset_[i], vec, dataset_.cols);
-            resultSet.addPoint(dist, i);
+        if (index_ == NULL) {
+            for (size_t i = 0; i < dataset_.rows; ++i) {
+                DistanceType dist = distance_(dataset_[i], vec, dataset_.cols);
+                resultSet.addPoint(dist, i);
+            }
+        } else {
+            for (size_t i = 0; i < size_; ++i) {
+                DistanceType dist = distance_(dataset_[index_[i]], vec, dataset_.cols);
+                resultSet.addPoint(dist, index_[i]);
+            }
         }
     }
 
@@ -124,6 +163,9 @@ private:
     /** Index distance */
     Distance distance_;
 
+    /** The extra storage */
+    size_t *index_;
+    size_t size_;
 };
 
 }
