@@ -361,7 +361,24 @@ public:
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        if (branching_<2) {
+            throw FLANNException("Branching factor must be at least 2");
+        }
+        size_t count = 0;
+        for (size_t i = 0; i < mask.size(); ++i) 
+            if (mask[i])
+                ++count;
+        size_ = count;
+
+        for (int i=0; i<trees_; ++i) {
+            indices[i] = new int[size_];
+            for (size_t j=0, k=0; j<mask.size(); ++j) {
+                if (mask[j])
+                    indices[i][k++] = j;
+            }
+            root[i] = pool.allocate<Node>();
+            computeClustering(root[i], indices[i], size_, branching_,0);
+        }
     }
 
 
@@ -373,6 +390,7 @@ public:
 
     void saveIndex(FILE* stream)
     {
+        save_value(stream, size_);
         save_value(stream, branching_);
         save_value(stream, trees_);
         save_value(stream, centers_init_);
@@ -388,6 +406,7 @@ public:
 
     void loadIndex(FILE* stream)
     {
+        load_value(stream, size_);
         load_value(stream, branching_);
         load_value(stream, trees_);
         load_value(stream, centers_init_);

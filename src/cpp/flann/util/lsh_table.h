@@ -196,6 +196,27 @@ public:
         optimize();
     }
 
+    /** Add a set of features to the table
+     * @param dataset the values to store
+     * @param mask specifies which value to add
+     */
+    void add(Matrix<ElementType> dataset, const std::vector<bool> &mask)
+    {
+#if USE_UNORDERED_MAP
+        size_t count = 0;
+        for (auto it = mask.begin(); it != mask.end(); ++it)
+            if (*it)
+                ++count;
+        if (!use_speed_) buckets_space_.rehash((buckets_space_.size() + count) * 1.2);
+#endif
+        // Add the features to the table
+        for (unsigned int i = 0; i < dataset.rows; ++i) 
+            if (mask[i])
+                add(i, dataset[i]);
+        // Now that the table is full, optimize it for speed/space
+        optimize();        
+    }
+
     /** Get a bucket given the key
      * @param key
      * @return

@@ -88,12 +88,13 @@ public:
      */
     LshIndex(const Matrix<ElementType>& input_data, const IndexParams& params = LshIndexParams(),
              Distance d = Distance()) :
-        dataset_(input_data), index_params_(params), distance_(d)
+        dataset_(input_data), index_params_(params), distance_(d), mask_(NULL)
     {
         table_number_ = get_param<unsigned int>(index_params_,"table_number",12);
         key_size_ = get_param<unsigned int>(index_params_,"key_size",20);
         multi_probe_level_ = get_param<unsigned int>(index_params_,"multi_probe_level",2);
 
+        size_ = dataset_.rows;
         feature_size_ = dataset_.cols;
         fill_xor_mask(0, key_size_, multi_probe_level_, xor_masks_);
     }
@@ -101,6 +102,11 @@ public:
 
     LshIndex(const LshIndex&);
     LshIndex& operator=(const LshIndex&);
+
+    virtual ~LshIndex() {
+        if (mask_ != NULL)
+            delete[] mask_;
+    }
 
     /**
      * Builds the index
@@ -119,7 +125,25 @@ public:
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        if (mask_ != NULL)
+            delete[] mask_;
+        mask_ = new bool[mask.size()];
+        std::copy(mask.begin(), mask.end(), mask_);
+
+        tables_.resize(table_number_);
+        for (unsigned int i = 0; i < table_number_; ++i) {
+            lsh::LshTable<ElementType>& table = tables_[i];
+            table = lsh::LshTable<ElementType>(feature_size_, key_size_);
+
+            // Add the features to the table
+            table.add(dataset_, mask);
+        }
+
+        size_t count = 0;
+        for (auto it = mask.begin(); it != mask.end(); ++it) 
+            if (*it)
+                ++count;
+        size_ = count;
     }
 
     flann_algorithm_t getType() const
@@ -130,6 +154,14 @@ public:
 
     void saveIndex(FILE* stream)
     {
+        if (mask_ == NULL) {
+            size_t mask_len = 0;
+            save_value(stream, mask_len);
+        } else {
+            size_t mask_len = dataset_.rows;
+            save_value(stream, mask_len);
+            save_value(stream, *mask_, mask_len);
+        }
         save_value(stream,table_number_);
         save_value(stream,key_size_);
         save_value(stream,multi_probe_level_);
@@ -138,13 +170,27 @@ public:
 
     void loadIndex(FILE* stream)
     {
+        size_t mask_len;
+        load_value(stream, mask_len);
+        if (mask_len > 0) {
+            if (mask_ != NULL)
+                delete[] mask_;
+            mask_ = new bool[mask_len];
+            load_value(stream, *mask_);
+        }
         load_value(stream, table_number_);
         load_value(stream, key_size_);
         load_value(stream, multi_probe_level_);
         load_value(stream, dataset_);
-        // Building the index is so fast we can afford not storing it
-        buildIndex();
 
+        if (mask_ == NULL) {
+            // Building the index is so fast we can afford not storing it
+            buildIndex();
+        } else {
+            std::vector<bool> mask(mask_, mask_+mask_len);
+            buildIndex(mask);
+        }
+        
         index_params_["algorithm"] = getType();
         index_params_["table_number"] = table_number_;
         index_params_["key_size"] = key_size_;
@@ -450,7 +496,11 @@ private:
     std::vector<lsh::BucketKey> xor_masks_;
 
     Distance distance_;
+
+    bool *mask_;
+    size_t size_;
 };
+
 }
 
 #endif //FLANN_LSH_INDEX_H_

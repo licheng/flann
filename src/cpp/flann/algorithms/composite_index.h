@@ -145,7 +145,10 @@ public:
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        Logger::info("Building kmeans tree...\n");
+        kmeans_index_->buildIndex(mask);
+        Logger::info("Building kdtree tree...\n");
+        kdtree_index_->buildIndex(mask);   
     }
 
     /**

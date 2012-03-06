@@ -89,12 +89,6 @@ public:
         dim_ = dataset_.cols;
         leaf_max_size_ = get_param(params,"leaf_max_size",10);
         reorder_ = get_param(params,"reorder",true);
-
-        // Create a permutable array of indices to the input vectors.
-        vind_.resize(size_);
-        for (size_t i = 0; i < size_; i++) {
-            vind_[i] = i;
-        }
     }
 
     KDTreeSingleIndex(const KDTreeSingleIndex&);
@@ -113,25 +107,23 @@ public:
      */
     void buildIndex()
     {
-        computeBoundingBox(root_bbox_);
-        root_node_ = divideTree(0, size_, root_bbox_ );   // construct the tree
-
-        if (reorder_) {
-            data_ = flann::Matrix<ElementType>(new ElementType[size_*dim_], size_, dim_);
-            for (size_t i=0; i<size_; ++i) {
-                for (size_t j=0; j<dim_; ++j) {
-                    data_[i][j] = dataset_[vind_[i]][j];
-                }
-            }
+        // Create a permutable array of indices to the input vectors.
+        vind_.resize(size_);
+        for (size_t i = 0; i < size_; i++) {
+            vind_[i] = i;
         }
-        else {
-            data_ = dataset_;
-        }
+        buildIndexImpl();
     }
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        vind_.clear();
+
+        for (size_t i = 0; i < mask.size(); ++i)
+            if (mask[i])
+                vind_.push_back(i);
+        size_ = vind_.size();
+        buildIndexImpl();
     }
 
     flann_algorithm_t getType() const
@@ -226,6 +218,22 @@ public:
     }
 
 private:
+    void buildIndexImpl() {
+        computeBoundingBox(root_bbox_);
+        root_node_ = divideTree(0, size_, root_bbox_ );   // construct the tree
+
+        if (reorder_) {
+            data_ = flann::Matrix<ElementType>(new ElementType[size_*dim_], size_, dim_);
+            for (size_t i=0; i<size_; ++i) {
+                for (size_t j=0; j<dim_; ++j) {
+                    data_[i][j] = dataset_[vind_[i]][j];
+                }
+            }
+        }
+        else {
+            data_ = dataset_;
+        }
+    }
 
 
     /*--------------------- Internal Data Structures --------------------------*/

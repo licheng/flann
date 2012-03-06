@@ -120,7 +120,21 @@ public:
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        bestParams_ = estimateBuildParams();
+        Logger::info("----------------------------------------------------\n");
+        Logger::info("Autotuned parameters:\n");
+        if (Logger::getLevel()<=FLANN_LOG_INFO)
+            print_params(bestParams_);
+        Logger::info("----------------------------------------------------\n");
+
+        bestIndex_ = create_index_by_type(dataset_, bestParams_, distance_);
+        bestIndex_->buildIndex(mask);
+        speedup_ = estimateSearchParams(bestSearchParams_);
+        Logger::info("----------------------------------------------------\n");
+        Logger::info("Search parameters:\n");
+        if (Logger::getLevel()<=FLANN_LOG_INFO)
+            print_params(bestSearchParams_);
+        Logger::info("----------------------------------------------------\n");
     }
 
     /**

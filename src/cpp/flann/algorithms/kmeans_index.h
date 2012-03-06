@@ -377,11 +377,30 @@ public:
 
     void buildIndex(const std::vector<bool> &mask)
     {
-        throw std::exception();
+        if (branching_<2) {
+            throw FLANNException("Branching factor must be at least 2");
+        }
+
+        size_t count = 0;
+        for (size_t i = 0; i < mask.size(); ++i)
+            if (mask[i])
+                ++count;
+        size_ = count;
+
+        indices_ = new int[size_];
+        for (size_t i=0, j=0; i<mask.size(); ++i) {
+            if (mask[i])
+                indices_[j++] = int(i);
+        }
+
+        root_ = pool_.allocate<KMeansNode>();
+        computeNodeStatistics(root_, indices_, (int)size_);
+        computeClustering(root_, indices_, (int)size_, branching_,0);
     }
 
     void saveIndex(FILE* stream)
     {
+        save_value(stream, size_);
         save_value(stream, branching_);
         save_value(stream, iterations_);
         save_value(stream, memoryCounter_);
@@ -394,6 +413,7 @@ public:
 
     void loadIndex(FILE* stream)
     {
+        load_value(stream, size_);
         load_value(stream, branching_);
         load_value(stream, iterations_);
         load_value(stream, memoryCounter_);
